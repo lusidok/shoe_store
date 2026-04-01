@@ -1,0 +1,67 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'order_list' %}">Заказы</a></li>
+<li class="breadcrumb-item active">{{ title }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">{{ title }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"> Артикул заказа *</label>
+                            {{ form.article }}
+                            <small class="text-muted">Уникальный номер заказа</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"> Клиент *</label>
+                            {{ form.user }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Статус *</label>
+                            {{ form.status }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"> Пункт выдачи *</label>
+                            {{ form.pickup_point }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"> Дата выдачи</label>
+                        {{ form.issue_date }}
+                        <small class="text-muted">Если не указана, заказ еще не выдан</small>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>  Информация:</strong> Товары в заказе можно добавить только через админ-панель Django.
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'order_list' %}" class="btn btn-secondary">
+                             Назад к списку
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                             Сохранить заказ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

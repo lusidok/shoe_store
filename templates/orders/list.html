@@ -1,0 +1,184 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Управление заказами{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1> Управление заказами</h1>
+    {% if is_admin %}
+    <a href="{% url 'order_add' %}" class="btn btn-success btn-lg">
+        ➕ Добавить заказ
+    </a>
+    {% endif %}
+</div>
+
+<!-- Фильтры и поиск -->
+<div class="card mb-4">
+    <div class="card-header">
+         Фильтры и поиск
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-5 mb-3">
+                <label class="form-label">Поиск</label>
+                <input type="text" id="searchInput" class="form-control" 
+                       placeholder="Поиск по артикулу или клиенту..." 
+                       value="{{ search_query }}">
+                <small class="text-muted">Поиск в реальном времени</small>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Фильтр по статусу</label>
+                <select id="statusFilter" class="form-select">
+                    <option value="">Все статусы</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>Артикул</th>
+                <th>Клиент</th>
+                <th>Статус</th>
+                <th>Пункт выдачи</th>
+                <th>Дата заказа</th>
+                <th>Дата выдачи</th>
+                <th>Товары</th>
+                {% if is_admin %}<th>Действия</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td><strong>{{ order.article }}</strong></td>
+                <td>{{ order.user.full_name }}</td>
+                <td>
+                    <span class="badge 
+                        {% if order.status == 'new' %}bg-secondary
+                        {% elif order.status == 'processing' %}bg-info
+                        {% elif order.status == 'ready' %}bg-primary
+                        {% elif order.status == 'issued' %}bg-success
+                        {% elif order.status == 'cancelled' %}bg-danger
+                        {% endif %}">
+                        {{ order.get_status_display }}
+                    </span>
+                </td>
+                <td>{{ order.pickup_point.address|truncatechars:50 }}</td>
+                <td>{{ order.order_date|date:"d.m.Y H:i" }}</td>
+                <td>{{ order.issue_date|date:"d.m.Y H:i"|default:"-" }}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#itemsModal{{ order.id }}">
+                         Показать ({{ order.items.count }})
+                    </button>
+                    
+                    <!-- Модальное окно с товарами заказа -->
+                    <div class="modal fade" id="itemsModal{{ order.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Товары в заказе {{ order.article }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Товар</th>
+                                                <th>Кол-во</th>
+                                                <th>Цена</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in order.items.all %}
+                                            <tr>
+                                                <td>{{ item.product.name }}</td>
+                                                <td>{{ item.quantity }}</td>
+                                                <td>{{ item.price_at_time }} ₽</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                {% if is_admin %}
+                <td>
+                    <a href="{% url 'order_edit' order.id %}" class="btn btn-sm btn-primary mb-1" title="Редактировать">
+                        ✏️
+                    </a>
+                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ order.id }}" title="Удалить">
+                        🗑️
+                    </button>
+                    
+                    <!-- Модальное окно подтверждения удаления -->
+                    <div class="modal fade" id="deleteModal{{ order.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">🗑️ Подтверждение удаления</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Вы уверены, что хотите удалить заказ <strong>{{ order.article }}</strong>?</p>
+                                    <p class="text-danger">Это действие невозможно отменить!</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                    <form method="post" action="{% url 'order_delete' order.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger">Удалить</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if is_admin %}8{% else %}7{% endif %}" class="text-center">
+                    <div class="py-5">
+                        <h4> Заказы не найдены</h4>
+                        <p class="text-muted">Попробуйте изменить параметры поиска или фильтрации</p>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    
+    function updateOrders() {
+        const params = new URLSearchParams();
+        if (searchInput.value) params.set('search', searchInput.value);
+        if (statusFilter.value) params.set('status', statusFilter.value);
+        
+        window.location.href = '?' + params.toString();
+    }
+    
+    if (searchInput) {
+        let timeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(updateOrders, 500);
+        });
+    }
+    
+    if (statusFilter) statusFilter.addEventListener('change', updateOrders);
+</script>
+{% endblock %}
